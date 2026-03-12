@@ -1,4 +1,6 @@
-# SlipNet Portable Launcher
+# SlipNet Windows Portable Launcher
+
+Built with vibe coding using Codex.
 
 `SlipNet Portable Launcher` is a portable Windows 10/11 desktop launcher for SlipNet-style profiles.
 
