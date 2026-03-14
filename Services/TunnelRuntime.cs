@@ -12,6 +12,7 @@ namespace SlipNetPortableLauncher.Services;
 internal sealed class TunnelRuntime : IAsyncDisposable
 {
     private readonly SlipNetConfigCodec configCodec;
+    private readonly SocksConnectivityProbe connectivityProbe = new();
     private readonly WindowsProxyService windowsProxyService = new();
     private Process? process;
     private HttpToSocksProxy? httpProxy;
@@ -60,6 +61,8 @@ internal sealed class TunnelRuntime : IAsyncDisposable
                 logWriter($"Windows proxy configured for 127.0.0.1:{settings.LocalHttpProxyPort}.");
             }
         }
+
+        await connectivityProbe.CheckPublicIpAsync(profile.TcpListenHost, profile.TcpListenPort, logWriter).ConfigureAwait(false);
     }
 
     public async Task StopAsync()

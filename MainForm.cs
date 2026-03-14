@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using SlipNetPortableLauncher.Models;
@@ -15,6 +16,7 @@ namespace SlipNetPortableLauncher;
 
 internal sealed class MainForm : Form
 {
+    private static readonly Regex AnsiEscapeRegex = new(@"\x1B\[[0-9;]*[A-Za-z]", RegexOptions.Compiled);
     private readonly PortableStorage storage = new();
     private readonly SlipNetConfigCodec configCodec = new();
     private readonly TunnelRuntime tunnelRuntime;
@@ -603,9 +605,77 @@ internal sealed class MainForm : Form
             return;
         }
 
-        logTextBox.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}{Environment.NewLine}");
+        var normalizedMessage = NormalizeLogMessage(message);
+        if (string.IsNullOrWhiteSpace(normalizedMessage))
+        {
+            return;
+        }
+
+        AppendLogSegment($"[{DateTime.Now:HH:mm:ss}] ", Color.FromArgb(126, 138, 153));
+        AppendLogSegment(normalizedMessage, GetLogColor(normalizedMessage));
+        AppendLogSegment(Environment.NewLine, logTextBox.ForeColor);
+        logTextBox.SelectionColor = logTextBox.ForeColor;
         logTextBox.SelectionStart = logTextBox.TextLength;
         logTextBox.ScrollToCaret();
+    }
+
+    private void AppendLogSegment(string text, Color color)
+    {
+        logTextBox.SelectionStart = logTextBox.TextLength;
+        logTextBox.SelectionLength = 0;
+        logTextBox.SelectionColor = color;
+        logTextBox.AppendText(text);
+    }
+
+    private static string NormalizeLogMessage(string message) =>
+        AnsiEscapeRegex.Replace(message, string.Empty).Trim();
+
+    private Color GetLogColor(string message)
+    {
+        var lower = message.ToLowerInvariant();
+        if (lower.Contains("test failed", StringComparison.Ordinal) ||
+            lower.Contains("failed", StringComparison.Ordinal) ||
+            lower.Contains("error", StringComparison.Ordinal) ||
+            lower.Contains("timeout", StringComparison.Ordinal))
+        {
+            return Color.FromArgb(255, 107, 107);
+        }
+
+        if (lower.Contains("warn", StringComparison.Ordinal) ||
+            lower.Contains("warning", StringComparison.Ordinal))
+        {
+            return Color.FromArgb(255, 204, 102);
+        }
+
+        if (lower.Contains("proxy ip", StringComparison.Ordinal) ||
+            lower.Contains("ready", StringComparison.Ordinal) ||
+            lower.Contains("listening", StringComparison.Ordinal) ||
+            lower.Contains("configured", StringComparison.Ordinal) ||
+            lower.Contains("downloaded", StringComparison.Ordinal) ||
+            lower.Contains("completed", StringComparison.Ordinal) ||
+            lower.Contains("saved profile", StringComparison.Ordinal) ||
+            lower.Contains("imported", StringComparison.Ordinal) ||
+            lower.Contains("copied config", StringComparison.Ordinal))
+        {
+            return Color.FromArgb(103, 214, 145);
+        }
+
+        if (lower.Contains("testing", StringComparison.Ordinal) ||
+            lower.Contains("launching", StringComparison.Ordinal) ||
+            lower.Contains("http get", StringComparison.Ordinal) ||
+            lower.Contains("using bundled", StringComparison.Ordinal) ||
+            lower.Contains("downloading", StringComparison.Ordinal))
+        {
+            return Color.FromArgb(122, 184, 255);
+        }
+
+        if (lower.Contains("stopped", StringComparison.Ordinal) ||
+            lower.Contains("closed", StringComparison.Ordinal))
+        {
+            return Color.FromArgb(186, 192, 204);
+        }
+
+        return logTextBox.ForeColor;
     }
 
     private Button CreateBrowseButton(TextBox targetTextBox, string title)
